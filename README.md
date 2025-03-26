@@ -184,6 +184,80 @@ The app uses Kotlin coroutines and flows for reactive programming:
    - CVV with different lengths (3-4 digits)
    - Various expiry date combinations
 
+## Building and Running on Physical Devices
+
+### Android Device Setup
+
+1. **Enable Developer Options on your Android device**:
+   - Go to `Settings > About phone`
+   - Tap `Build number` 7 times to enable Developer Options
+   - Go back to Settings, you'll now see `Developer Options`
+   - Enable `USB debugging`
+
+2. **Connect your Android device**:
+   - Connect your phone to your computer with a USB cable
+   - If prompted on your phone, allow USB debugging
+   - Verify connection by running `adb devices` in terminal
+
+3. **Build and Install via Android Studio**:
+   - Open the project in Android Studio
+   - Select your connected device from the dropdown menu
+   - Click the Run button (▶️)
+   - The app will build and install on your device
+
+4. **Build and Install via Command Line**:
+   ```bash
+   # Build the app
+   ./gradlew :composeApp:assembleDebug
+   
+   # Install on connected device
+   ./gradlew :composeApp:installDebug
+   ```
+
+### iOS Device Setup
+
+1. **Xcode Developer Account Setup**:
+   - Open Xcode and go to `Xcode > Preferences > Accounts`
+   - Add your Apple ID and sign in
+   - If you're part of a development team, it should appear here
+
+2. **Prepare your iOS device**:
+   - Connect your iPhone to your Mac with a USB cable
+   - Trust the computer if prompted on your phone
+   - Unlock your device and keep it unlocked during installation
+
+3. **Configure the Project**:
+   - Open `iosApp/iosApp.xcworkspace` in Xcode
+   - Select the `iosApp` target
+   - In the `Signing & Capabilities` tab:
+     - Select your Team from the dropdown
+     - Xcode should automatically manage signing
+   - If you don't have a paid Apple Developer account, you can still run on your device but will need to:
+     - Use a personal team profile
+     - The app will expire after 7 days
+     - The app will only run on your personal devices
+
+4. **Build and Run**:
+   - Select your device from the device dropdown at the top of Xcode
+   - Click the Play button to build and run
+   - First installation may require you to trust the developer profile:
+     - On iOS go to `Settings > General > Device Management`
+     - Select your developer profile and trust it
+
+### Troubleshooting
+
+#### Android Issues:
+- If your device doesn't appear in Android Studio, try:
+  - Restarting adb: `adb kill-server && adb start-server`
+  - Changing USB modes on your phone
+  - Using a different USB cable
+
+#### iOS Issues:
+- If you get a provisioning profile error:
+  - Go to `Product > Destination` and ensure your device is selected
+  - Try restarting Xcode and reconnecting your device
+  - Verify your Apple ID has proper permissions
+
 ## Key KMP Concepts for Beginners
 
 1. **expect/actual**: Define what you need in common code (`expect`) and provide platform implementations (`actual`)
