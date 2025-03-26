@@ -128,6 +128,62 @@ The app uses Kotlin coroutines and flows for reactive programming:
 2. Select a simulator or device
 3. Run the project
 
+## Testing the App
+
+### Android Testing
+
+1. **Run Unit Tests**:
+   ```bash
+   ./gradlew :shared:testDebugUnitTest       # Test shared code
+   ./gradlew :composeApp:testDebugUnitTest   # Test Android-specific code
+   ```
+
+2. **Run Instrumented Tests**:
+   ```bash
+   ./gradlew :composeApp:connectedDebugAndroidTest
+   ```
+
+3. **Manual Testing**:
+   - Use these test card numbers:
+     - Valid: `4111 1111 1111 1111`
+     - Invalid: `1234 5678 9012 3456`
+   - Test validation by:
+     - Entering invalid data in each field
+     - Submitting with missing information
+     - Submitting with all valid data
+
+### iOS Testing
+
+1. **Run Unit Tests via Xcode**:
+   - Open `iosApp/iosApp.xcworkspace` in Xcode
+   - Select `Product > Test` or press `⌘+U`
+
+2. **Run Tests via Command Line**:
+   ```bash
+   xcodebuild test -workspace iosApp/iosApp.xcworkspace -scheme iosApp -destination 'platform=iOS Simulator,name=iPhone 15 Pro'
+   ```
+   (Replace "iPhone 15 Pro" with your available simulator)
+
+3. **Manual Testing**:
+   - Use the same test card numbers as Android
+   - Verify UI behaves correctly in both portrait and landscape modes
+   - Check that validation messages appear correctly
+   - Test keyboard behavior and field focus
+
+### Testing Shared Code
+
+1. **Run All Tests**:
+   ```bash
+   ./gradlew check
+   ```
+
+2. **Test Credit Card Validation**:
+   Run the app on both platforms and test these scenarios:
+   - Card number passes Luhn check but is expired
+   - Name validation with different characters
+   - CVV with different lengths (3-4 digits)
+   - Various expiry date combinations
+
 ## Key KMP Concepts for Beginners
 
 1. **expect/actual**: Define what you need in common code (`expect`) and provide platform implementations (`actual`)
