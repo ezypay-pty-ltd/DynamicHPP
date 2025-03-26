@@ -22,6 +22,9 @@ kotlin {
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
+            implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
+            implementation("androidx.compose.material:material-icons-extended:1.7.6")
+            implementation(projects.shared)
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -66,5 +69,6 @@ android {
 
 dependencies {
     debugImplementation(compose.uiTooling)
+    implementation(project(":shared"))
 }
 
