@@ -108,6 +108,247 @@ The app uses Kotlin coroutines and flows for reactive programming:
 - `StateFlow` provides reactive UI state updates
 - `viewModelScope` manages coroutine lifecycles
 
+## Detailed Codebase Explanation for KMP Beginners
+
+### The Shared Module: Heart of KMP Architecture
+
+The `shared` module is the core of any KMP project, including this payment app. It contains all the code that will be used by both Android and iOS platforms. Think of it as the "write once, use everywhere" part of your app.
+
+#### Structure of the Shared Module
+
+```
+shared/
+├── src/
+    ├── commonMain/       👉 Platform-independent code
+    │   └── kotlin/
+    │       └── com/ezypay/dhpp/
+    │           ├── model/
+    │           │   └── CreditCard.kt     👉 Data model shared across platforms
+    │           └── viewmodel/
+    │               └── CreditCardViewModel.kt   👉 Shared business logic
+    ├── androidMain/      👉 Android-specific implementations
+    │   └── kotlin/
+    │       └── com/ezypay/dhpp/
+    │           └── model/
+    │               └── DateUtils.kt      👉 Android implementation of date functions
+    └── iosMain/          👉 iOS-specific implementations
+        └── kotlin/
+            └── com/ezypay/dhpp/
+                └── model/
+                    └── DateUtils.kt      👉 iOS implementation of date functions
+```
+
+#### What Each Part Does
+
+1. **commonMain**: Contains all the platform-independent code
+   - `CreditCard.kt`: Defines the data structure and validation logic
+   - `CreditCardViewModel.kt`: Handles UI state and business logic
+
+2. **androidMain**: Contains Android-specific implementations
+   - Implements the `actual` part of `expect/actual` declarations
+   - Example: Using Android's Calendar API to get current date
+
+3. **iosMain**: Contains iOS-specific implementations
+   - Implements the `actual` part of `expect/actual` declarations for iOS
+   - Example: Using iOS's NSCalendar to get current date
+
+### Deep Dive: How Everything Connects
+
+#### 1. The Model Layer (CreditCard.kt)
+
+This defines our credit card data and validation logic:
+
+```kotlin
+// In shared/src/commonMain/.../model/CreditCard.kt
+data class CreditCard(
+    val number: String = "",
+    val holderName: String = "",
+    val expiryMonth: String = "",
+    val expiryYear: String = "",
+    val cvv: String = ""
+) {
+    companion object {
+        fun validateNumber(number: String): Boolean {
+            // Validation logic is written ONCE and used everywhere
+            return CARD_NUMBER_PATTERN.matches(digitsOnly) && validateLuhn(digitsOnly)
+        }
+        
+        // More validation functions...
+    }
+}
+
+// This tells KMP: "I need these functions, but how they're implemented depends on the platform"
+expect fun getCurrentYear(): Int
+expect fun getCurrentMonth(): Int
+```
+
+#### 2. Platform-Specific Implementations
+
+For Android:
+```kotlin
+// In shared/src/androidMain/.../model/DateUtils.kt
+actual fun getCurrentYear(): Int = Calendar.getInstance().get(Calendar.YEAR)
+actual fun getCurrentMonth(): Int = Calendar.getInstance().get(Calendar.MONTH) + 1
+```
+
+For iOS:
+```kotlin
+// In shared/src/iosMain/.../model/DateUtils.kt
+actual fun getCurrentYear(): Int = NSCalendar.currentCalendar.component(NSCalendarUnit.Year, fromDate: NSDate())
+actual fun getCurrentMonth(): Int = NSCalendar.currentCalendar.component(NSCalendarUnit.Month, fromDate: NSDate())
+```
+
+#### 3. The ViewModel Layer
+
+The ViewModel serves as the bridge between your shared business logic and platform UIs:
+
+```kotlin
+// In shared/src/commonMain/.../viewmodel/CreditCardViewModel.kt
+class CreditCardViewModel : ViewModel() {
+    // This state is observed by BOTH Android and iOS UIs
+    private val _uiState = MutableStateFlow(CreditCardUiState())
+    val uiState: StateFlow<CreditCardUiState> = _uiState.asStateFlow()
+    
+    fun updateCardNumber(number: String) {
+        _uiState.update { currentState ->
+            // Shared validation logic from CreditCard model
+            val isValid = CreditCard.validateNumber(number)
+            currentState.copy(
+                creditCard = currentState.creditCard.copy(number = number),
+                numberError = if (number.isNotEmpty() && !isValid) "Invalid card number" else ""
+            )
+        }
+    }
+    
+    // More functions that modify the shared state...
+}
+
+// This state class is also shared between platforms
+data class CreditCardUiState(
+    val creditCard: CreditCard = CreditCard(),
+    val numberError: String = "",
+    // More fields...
+)
+```
+
+### How Platform UIs Consume the Shared Code
+
+#### Android UI (Compose)
+
+In your Android app, you use Jetpack Compose to create the UI and connect to the shared ViewModel:
+
+```kotlin
+// In composeApp/src/main/kotlin/.../MainActivity.kt (simplified example)
+@Composable
+fun PaymentScreen(viewModel: CreditCardViewModel = viewModel()) {
+    // Collect the shared state as Compose state
+    val uiState by viewModel.uiState.collectAsState()
+    
+    Column {
+        // Text field for card number
+        TextField(
+            value = uiState.creditCard.number,
+            onValueChange = { viewModel.updateCardNumber(it) },
+            label = { Text("Card Number") },
+            isError = uiState.numberError.isNotEmpty()
+        )
+        
+        if (uiState.numberError.isNotEmpty()) {
+            Text(uiState.numberError, color = Color.Red)
+        }
+        
+        // More UI components for other fields...
+        
+        Button(
+            onClick = { viewModel.processPayment() },
+            enabled = !uiState.isSubmitting
+        ) {
+            Text("Pay Now")
+        }
+    }
+}
+```
+
+#### iOS UI (SwiftUI)
+
+In your iOS app, you use SwiftUI and connect to the same shared ViewModel through a wrapper:
+
+```swift
+// In iosApp/iosApp/ContentView.swift (simplified example)
+struct ContentView: View {
+    // This wrapper observes the shared ViewModel
+    @ObservedObject private var viewModel = CreditCardViewModelWrapper()
+    
+    var body: some View {
+        VStack {
+            // Text field for card number
+            TextField("Card Number", text: Binding(
+                get: { viewModel.uiState.creditCard.number },
+                set: { viewModel.updateCardNumber(number: $0) }
+            ))
+            .padding()
+            .border(viewModel.uiState.numberError.isEmpty ? Color.gray : Color.red)
+            
+            if !viewModel.uiState.numberError.isEmpty {
+                Text(viewModel.uiState.numberError)
+                    .foregroundColor(.red)
+            }
+            
+            // More UI components for other fields...
+            
+            Button("Pay Now") {
+                viewModel.processPayment()
+            }
+            .disabled(viewModel.uiState.isSubmitting)
+        }
+    }
+}
+
+// This wrapper makes the Kotlin ViewModel observable in SwiftUI
+class CreditCardViewModelWrapper: ObservableObject {
+    private let viewModel = CreditCardViewModel()
+    @Published var uiState = CreditCardUiState()
+    
+    init() {
+        // Set up observation of the Kotlin Flow in Swift
+        viewModel.uiState.watch { [weak self] state in
+            self?.uiState = state
+        }
+    }
+    
+    func updateCardNumber(number: String) {
+        viewModel.updateCardNumber(number: number)
+    }
+    
+    // More wrapper functions...
+}
+```
+
+### Data Flow in the App
+
+Here's how data flows through the application:
+
+1. **User Input**: The user enters data in platform UI (Android/iOS)
+2. **UI to ViewModel**: Platform code calls shared ViewModel functions
+3. **Validation**: ViewModel uses shared model logic to validate input
+4. **State Update**: ViewModel updates state using Kotlin flows
+5. **UI Update**: Platform UI observes state changes and updates accordingly
+
+This pattern ensures:
+- Business logic is written once in Kotlin
+- Platform-specific code is only written for UI and platform APIs
+- The app behaves consistently across platforms
+
+### Benefits for a KMP Beginner
+
+As a beginner working with KMP, you'll benefit from:
+
+1. **Code Sharing**: Write core logic once, reducing bugs and maintenance
+2. **Native UIs**: Still create fully native UIs with platform-specific tools
+3. **Gradual Adoption**: Start small by sharing just models, then expand
+4. **Type Safety**: Kotlin's type system helps prevent errors across platforms
+5. **Modern Architecture**: The separation enforces clean architecture practices
+
 ## Getting Started with This Code
 
 ### Prerequisites
